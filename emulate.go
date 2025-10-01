@@ -1,8 +1,8 @@
 package chromedp
 
 import (
+	"github.com/MashinaMashina/chromedp/device"
 	"github.com/chromedp/cdproto/emulation"
-	"github.com/chromedp/chromedp/device"
 )
 
 // EmulateAction are actions that change the emulation settings for the
