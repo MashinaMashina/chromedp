@@ -299,7 +299,7 @@ func initContextBrowser(ctx context.Context) (*Context, error) {
 	if c.Browser == nil {
 		b, err := c.Allocator.Allocate(ctx, c.browserOpts...)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("allocate: %w", err)
 		}
 		c.Browser = b
 		c.Browser.listeners = append(c.Browser.listeners, c.browserListeners...)
@@ -334,7 +334,7 @@ func Run(ctx context.Context, actions ...Action) error {
 	}
 	err = Tasks(actions).Do(cdp.WithExecutor(ctx, c.Target))
 	if err != nil {
-		return fmt.Errorf("Do: %w", err)
+		return fmt.Errorf("do: %w", err)
 	}
 
 	return nil
@@ -343,7 +343,7 @@ func Run(ctx context.Context, actions ...Action) error {
 func (c *Context) newTarget(ctx context.Context) error {
 	if c.targetID != "" {
 		if err := c.attachTarget(ctx, c.targetID); err != nil {
-			return err
+			return fmt.Errorf("attach target: %w", err)
 		}
 		// This new page might have already loaded its top-level frame
 		// already, in which case we wouldn't see the frameNavigated and
@@ -354,7 +354,7 @@ func (c *Context) newTarget(ctx context.Context) error {
 		if !c.Target.isWorker {
 			tree, err := page.GetFrameTree().Do(cdp.WithExecutor(ctx, c.Target))
 			if err != nil {
-				return err
+				return fmt.Errorf("get frame tree: %w", err)
 			}
 
 			c.Target.frameMu.Lock()
@@ -372,14 +372,14 @@ func (c *Context) newTarget(ctx context.Context) error {
 		if c.createBrowserContextParams != nil {
 			c.BrowserContextID, err = c.createBrowserContextParams.Do(browserExecutor)
 			if err != nil {
-				return err
+				return fmt.Errorf("create browser context: %w", err)
 			}
 			c.browserContextOwner = true
 			c.createBrowserContextParams = nil
 		}
 		c.targetID, err = target.CreateTarget("about:blank").WithBrowserContextID(c.BrowserContextID).Do(browserExecutor)
 		if err != nil {
-			return err
+			return fmt.Errorf("create target: %w", err)
 		}
 		return c.attachTarget(ctx, c.targetID)
 	}
@@ -417,11 +417,11 @@ func (c *Context) newTarget(ctx context.Context) error {
 	// wait for the first tab to appear
 	action := target.SetDiscoverTargets(true)
 	if err := action.Do(cdp.WithExecutor(ctx, c.Browser)); err != nil {
-		return err
+		return fmt.Errorf("set discover targets: %w", err)
 	}
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("context canceled: %w", ctx.Err())
 	case c.targetID = <-ch:
 	}
 	return c.attachTarget(ctx, c.targetID)
@@ -430,12 +430,12 @@ func (c *Context) newTarget(ctx context.Context) error {
 func (c *Context) attachTarget(ctx context.Context, targetID target.ID) error {
 	sessionID, err := target.AttachToTarget(targetID).WithFlatten(true).Do(cdp.WithExecutor(ctx, c.Browser))
 	if err != nil {
-		return err
+		return fmt.Errorf("attach target: %w", err)
 	}
 
 	c.Target, err = c.Browser.newExecutorForTarget(ctx, targetID, sessionID)
 	if err != nil {
-		return err
+		return fmt.Errorf("new executor for target: %w", err)
 	}
 
 	c.Target.listeners = append(c.Target.listeners, c.targetListeners...)
@@ -449,7 +449,7 @@ func (c *Context) attachTarget(ctx context.Context, targetID target.ID) error {
 	}
 	res, _, err := runtime.Evaluate("self").Do(cdp.WithExecutor(ctx, c.Target))
 	if err != nil {
-		return err
+		return fmt.Errorf("evaluate self: %w", err)
 	}
 	c.Target.isWorker = strings.Contains(res.ClassName, "WorkerGlobalScope")
 

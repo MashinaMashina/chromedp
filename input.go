@@ -2,6 +2,7 @@ package chromedp
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/MashinaMashina/chromedp/kb"
 	"github.com/chromedp/cdproto/cdp"
@@ -41,7 +42,7 @@ func MouseClickXY(x, y float64, opts ...MouseOption) MouseAction {
 		}
 
 		if err := p.Do(ctx); err != nil {
-			return err
+			return fmt.Errorf("do: %w", err)
 		}
 
 		p.Type = input.MouseReleased
